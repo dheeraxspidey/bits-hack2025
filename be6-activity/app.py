@@ -25,6 +25,7 @@ import uuid
 from functools import wraps
 from cryptography.fernet import Fernet
 import traceback
+import re
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -814,160 +815,125 @@ def update_profile():
         logger.error(f"Error updating profile: {str(e)}")
         return jsonify({'error': 'Server error', 'details': str(e)}), 500
 
-def generate_resume_content(resume_data, user_api_key=None):
-    """Modified to accept optional user API key"""
+def generate_resume_content(resume_data):
     try:
-        # Track key source
-        key_source = "System" if not user_api_key else "User-provided"
-        logger.debug(f"Attempting resume generation with {key_source} key")
-        
-        if user_api_key:
-            try:
-                decrypted_key = decrypt_api_key(user_api_key)
-                logger.debug("Successfully decrypted user API key")
-                genai.configure(api_key=decrypted_key)
-            except Exception as decrypt_error:
-                logger.error(f"Decryption failed: {str(decrypt_error)}")
-                if os.getenv('GEMINI_API_KEY'):
-                    logger.warning("Falling back to system API key")
-                    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-                    key_source = "System (fallback)"
-                else:
-                    raise Exception("Invalid user API key and no system key available")
-        else:
-            if not os.getenv('GEMINI_API_KEY'):
-                raise Exception("No system API key configured")
-            genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-
-        model = genai.GenerativeModel('gemini-1.5-pro')
-        logger.info(f"Using {key_source} API key for generation")
-        
-        # Format education entries
+        # Format education entries with proper defaults
         education_entries = []
-        for edu in resume_data['education']:
-            period = f"{edu['start_year']} - {'Present' if edu['current'] else edu['end_year']}"
-            entry = {
-                "degree": edu['degree'],
-                "field": edu['field'],
-                "school": edu['school'],
-                "period": period,
+        for edu in resume_data.get('education', []):
+            education_entries.append({
+                "degree": edu.get('degree', ''),
+                "field": edu.get('field', ''),
+                "school": edu.get('school', ''),
+                "start_year": edu.get('start_year', ''),
+                "end_year": edu.get('end_year', 'Present'),
                 "description": edu.get('description', '')
-            }
-            education_entries.append(entry)
+            })
 
-        # Format experience entries
+        # Format experience entries with proper defaults
         experience_entries = []
-        for exp in resume_data['experience']:
-            period = f"{exp['start_date']} - {'Present' if exp['current'] else exp['end_date']}"
-            entry = {
-                "position": exp['position'],
-                "company": exp['company'],
-                "period": period,
+        for exp in resume_data.get('experience', []):
+            experience_entries.append({
+                "position": exp.get('position', ''),
+                "company": exp.get('company', ''),
+                "start_date": exp.get('start_date', ''),
+                "end_date": exp.get('end_date', 'Present'),
                 "description": exp.get('description', '')
-            }
-            experience_entries.append(entry)
+            })
 
-        # Format activities
+        # Format activities with explicit defaults
         activity_entries = []
-        for act in resume_data['activities']:
-            entry = {
-                "title": act['title'],
+        for act in resume_data.get('activities', []):
+            activity_entries.append({
+                "title": act.get('title', ''),
                 "description": act.get('description', ''),
-                "skills": act.get('skills', [])
-            }
-            activity_entries.append(entry)
+                "skills": act.get('skills', []),
+                "date": act.get('date', '')
+            })
 
-        prompt = f"""Create a professional resume in JSON format with precise formatting and accurate content representation. The output must be valid JSON:
+        # Enhanced prompt with explicit structure example
+        prompt = f"""Create a professional resume in JSON format with these sections:
+        1. basics (must include name, email)
+        2. education
+        3. experience 
+        4. skills
+        5. projects
+        
+        Input Data:
+        {{
+            "basics": {{
+                "name": "{resume_data['user_info']['name']}",
+                "email": "{resume_data['user_info']['email']}",
+                "location": "{resume_data['user_info'].get('location', '')}",
+                "profiles": {{
+                    "github": "{resume_data['user_info'].get('github', '')}",
+                    "linkedin": "{resume_data['user_info'].get('linkedin', '')}"
+                }},
+                "summary": "{resume_data['user_info'].get('bio', '')}"
+            }},
+            "education": {education_entries},
+            "experience": {experience_entries},
+            "skills": {resume_data.get('skills', [])},
+            "projects": {activity_entries}
+        }}
 
-{{
-    "basics": {{
-        "name": "{resume_data['user_info']['name']}",
-        "email": "{resume_data['user_info']['email']}",
-        "location": "{resume_data['user_info']['location']}",
-        "profiles": {{
-            "linkedin": "{resume_data['user_info']['linkedin']}",
-            "github": "{resume_data['user_info']['github']}"
-        }},
-        "summary": "{resume_data['user_info']['bio']}"
-    }},
-    "education": {education_entries},
-    "experience": {experience_entries},
-    "skills": {resume_data['skills']},
-    "projects": {activity_entries}
-}}
-
-Strict Guidelines:
-1. Maintain exact data structure as shown above
-2. Keep all original information intact - no omissions  or additions .
-3. For text fields (descriptions, summaries):
-   - Preserve all technical terms, numbers, and metrics exactly as provided
-   - Maintain the same level of technical detail
-   - Only rephrase for clarity while keeping the exact same meaning
-   - Do not add or remove any achievements or skills
-4. For dates and periods:
+        Requirements:
+        1. Maintain this exact structure as shown in the input data  i repeat.
+        2. Improve wording but keep all original data
+        3. Output must be valid JSON without markdown
+        4. Never omit the basics section
+        5. For dates and periods:
    - Use consistent format: YYYY-MM for all dates
-   - For ongoing items, use 'Present' consistently
-5. For skills and technical information:
-   - Keep all technical terms exactly as provided .
-   - Maintain the exact same skill levels and expertise claims
-6. For projects and activities:
-   - Preserve all technical details and metrics
-   - Keep the same project scope and achievements
-   - Maintain all technology mentions and tool references
-7. Ensure proper JSON escaping for special characters
-8. Validate the final JSON structure
-9. make the initial letter of titles of the education and experience  or similar fields in initial caps.
-10.rephrase the description of the activities ,summary in a way that is more engaging and interesting.
-The response must contain only the JSON object - no additional text or explanations.
-"""
+   - For ongoing items, use 'Present' consistently"""
 
-        # Generate content
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.7,
-                "top_p": 0.8,
-                "top_k": 40,
-                "max_output_tokens": 2048,
-            }
+        # Generate content - fix indentation here
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "mistral",
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                }
+            },
+            timeout=60
         )
-
-        # Clean up the response - remove markdown code block markers
-        content = response.text
-        content = content.replace('```json', '').replace('```', '').strip()
         
-        # Validate the cleaned JSON
-        try:
-            json.loads(content)  # Just to validate
-            return content
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON generated: {str(e)}")
-            raise Exception("Generated content is not valid JSON")
-    except genai.Error as api_error:
-        logger.error(f"Gemini API Error: {str(api_error)}")
-        error_msg = f"API Error: {api_error}"
-        if "quota" in error_msg.lower():
-            error_msg += " - API quota exceeded"
-        elif "API_KEY_INVALID" in error_msg:
-            error_msg += " - Invalid API key"
-        raise Exception(error_msg)
+        response.raise_for_status()  # Check for HTTP errors
+        response_data = response.json()
         
+        # Clean response text
+        content = response_data.get("response", "")
+        
+        # Extract only the JSON content between first { and last }
+        start_idx = content.find('{')
+        end_idx = content.rfind('}') + 1  # +1 to include the closing brace
+        
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError("No valid JSON found in response")
+            
+        clean_content = content[start_idx:end_idx]
+        
+        # Remove any remaining markdown formatting
+        clean_content = re.sub(r'```json|```', '', clean_content)
+        clean_content = clean_content.strip()
+            
+        parsed_resume=clean_content
+        print("thisss is the thinggg")
+        # parsed_resume="'''"+parsed_resume+"'''"
+        print(parsed_resume)    
+        parsed_resume=json.loads(parsed_resume)
+        parsed_resume=json.dumps(parsed_resume, indent=4)
+        return parsed_resume
     except Exception as e:
-        logger.error(f"Generation Error: {str(e)}")
-        logger.error(f"Stack Trace: {traceback.format_exc()}")
-        raise
-
+        return Exception(" error in parsing resume")
+    
 def generate_cover_letter_content(job_description, user_data, tone='professional', user_api_key=None):
     """Generate cover letter using Gemini with job description context"""
     try:
         # API key handling same as resume generation
-        if user_api_key:
-            decrypted_key = decrypt_api_key(user_api_key)
-            genai.configure(api_key=decrypted_key)
-        else:
-            genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        
         
         prompt = f"""Generate a professional cover letter based on this job description and applicant profile.
         
@@ -990,14 +956,18 @@ def generate_cover_letter_content(job_description, user_data, tone='professional
         
         """
         print(prompt)
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "top_k": 40,
-                "max_output_tokens": 1024,
-            }
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "mistral",
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                }
+            },
+            timeout=60
         )
         return response.text
 
@@ -1054,6 +1024,14 @@ def generate_cover_letter():
 @jwt_required()
 def generate_resume():
     try:
+        # Convert datetime objects before serialization
+        def convert_dates(activity):
+            activity_dict = activity.to_mongo().to_dict()
+            for key in ['date']:
+                if key in activity_dict and isinstance(activity_dict[key], datetime):
+                    activity_dict[key] = activity_dict[key].isoformat()
+            return activity_dict
+
         user_id = get_jwt_identity()
         user = User.objects(id=user_id).first()
         
@@ -1082,7 +1060,7 @@ def generate_resume():
         )
         resume.save()
 
-        # Prepare resume data
+        # Prepare resume data with activities
         resume_data = {
             'user_info': {
                 'name': user.name,
@@ -1090,32 +1068,18 @@ def generate_resume():
                 'location': user.location,
                 'bio': user.bio,
                 'github': user.github,
-                'linkedin': user.linkedin
+                'linkedin': user.linkedin,
+                'profile_image': user.profile_image
             },
-            'education': [{
-                'school': edu.school,
-                'degree': edu.degree,
-                'field': edu.field,
-                'start_year': edu.start_year,
-                'end_year': edu.end_year,
-                'current': edu.current,
-                'description': edu.description
-            } for edu in user.education],
-            'experience': [{
-                'company': exp.company,
-                'position': exp.position,
-                'start_date': exp.start_date,
-                'end_date': exp.end_date,
-                'current': exp.current,
-                'description': exp.description
-            } for exp in user.experience],
+            'education': [convert_dates(edu) for edu in user.education],
+            'experience': [convert_dates(exp) for exp in user.experience],
             'skills': user.skills,
+            'activities': [convert_dates(act) for act in user.activities]
         }
 
         # Pass user's API key if available
         generated_resume = generate_resume_content(
-            resume_data, 
-            user_api_key=user.gemini_api_key
+            resume_data
         )
 
         # Parse the generated content
@@ -1436,21 +1400,18 @@ def recommend_activities():
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
-            
-        # Get job title from request
+
         data = request.get_json()
         job_title = data.get('job_title')
+        response_text = ""  # Initialize with empty string
         
         if not job_title:
             return jsonify({'error': 'Job title is required'}), 400
-            
-        # Get all user activities
+
         activities = user.activities
-        
         if not activities:
             return jsonify({'error': 'No activities found for user'}), 404
-            
-        # Format activities for Gemini
+
         activities_data = []
         for activity in activities:
             activity_data = {
@@ -1461,96 +1422,79 @@ def recommend_activities():
                 'skills': getattr(activity, 'skills', [])
             }
             activities_data.append(activity_data)
-            
-        # Create prompt for Gemini
-        prompt = f"""
-        You are a career advisor helping to build a tailored resume for a {job_title} position.
-        
-        I'll provide a list of activities with their IDs, titles, descriptions, and associated skills.
-        
-        Your task is to analyze these activities and select the ones that are most relevant for a {job_title} position.
-        
-        Return ONLY a JSON array of activity titles (not IDs), with no additional text. The JSON should look like this:
-        ["Activity Title 1", "Activity Title 2", "Activity Title 3"]
-        
-        Here are the activities:
+
+        prompt = f"""Analyze these activities for a {job_title} position:
         {json.dumps(activities_data, indent=2)}
         
-        Select the most relevant activities (maximum 5) for a {job_title} position.
-        """
+        Return ONLY a JSON array of 3-5 most relevant activity TITLES (not IDs) using this exact format:
+        ["Title 1", "Title 2", "Title 3"]
         
-        # Handle API key configuration
-        key_source = "System"
-        try:
-            if user.gemini_api_key:
-                decrypted_key = decrypt_api_key(user.gemini_api_key)
-                genai.configure(api_key=decrypted_key)
-                key_source = "User"
-                logger.info(f"Using user API key for recommendations ({user.email})")
-            else:
-                genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-                logger.info("Using system API key for recommendations")
-                
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            
-        except Exception as key_error:
-            logger.error(f"API key error: {str(key_error)}")
-            if not os.getenv('GEMINI_API_KEY'):
-                return jsonify({'error': 'No valid API key available'}), 500
-            genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-            key_source = "System (fallback)"
-            model = genai.GenerativeModel('gemini-1.5-pro')
+        Rules:
+        1. Titles must match exactly from the list
+        2. No empty strings
+        3. Only include titles that exist in the activities list
+        4. Return valid JSON only, no extra text"""
 
-        # Safety settings and generation config
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE
-        }
-        
-        generation_config = {
-            "temperature": 0.2,
-            "top_p": 0.8,
-            "top_k": 40,
-            "max_output_tokens": 1024,
-        }
-        
-        response = model.generate_content(
-            prompt,
-            generation_config=generation_config,
-            safety_settings=safety_settings
-        )
-        
-        # Parse the response to get activity titles
         try:
-            response_text = response.text
-            # Try to parse as JSON
-            recommended_activities = json.loads(response_text)
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "mistral",
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "max_tokens": 500
+                    }
+                },
+                timeout=60
+            )
+            response.raise_for_status()
+            response_data = response.json()
+            response_text = response_data.get("response", "")
             
-            # Verify the response is a list of strings
-            if not isinstance(recommended_activities, list):
-                return jsonify({'error': 'Invalid response format from AI'}), 500
-                
-            for activity_title in recommended_activities:
-                if not isinstance(activity_title, str):
-                    return jsonify({'error': 'Invalid activity title format from AI'}), 500
-                    
-            # Verify that all activity titles exist in the user's activities
-            valid_activity_titles = [activity.title for activity in activities]
-            recommended_activities = [title for title in recommended_activities if title in valid_activity_titles]
-            print(recommended_activities)
-            return jsonify({
-                'recommended_activities': recommended_activities
-            }), 200
+        except requests.exceptions.RequestException as e:
+            response_text = f"API request failed: {str(e)}"
+            raise
+
+        # Parse the response
+        try:
+            # Clean response text
+            clean_response = response_text.strip().replace('```json', '').replace('```', '')
             
+            # First try to parse directly
+            recommended_activities = json.loads(clean_response)
         except json.JSONDecodeError:
-            # If response is not valid JSON, return error
-            return jsonify({'error': 'AI response could not be parsed as JSON'}), 500
-            
+            # Fallback: Extract JSON array using regex
+            json_match = re.search(r'\[.*?\]', clean_response, re.DOTALL)
+            if json_match:
+                recommended_activities = json.loads(json_match.group())
+            else:
+                recommended_activities = []
+                logger.warning(f"Failed to parse JSON from response: {clean_response}")
+
+        # Validation and processing
+        valid_titles = {activity.title.lower(): activity.title for activity in activities}
+        validated_activities = []
+        
+        for title in recommended_activities:
+            if isinstance(title, str):  # Ensure we only process strings
+                clean_title = title.strip().lower()
+                if clean_title and clean_title in valid_titles:
+                    validated_activities.append(valid_titles[clean_title])
+
+        # Remove duplicates and limit results
+        final_recommendations = list(dict.fromkeys(validated_activities))[:5]
+        
+        return jsonify({'recommended_activities': final_recommendations}), 200
+
     except Exception as e:
-        logger.error(f"Recommendation error: {str(e)}")
-        return jsonify({'error': 'Server error'}), 500
+        logger.error(f"Recommendation error: {str(e)}\nRaw response: {response_text}")
+        return jsonify({
+            'error': 'Failed to generate recommendations',
+            'details': str(e),
+            'raw_response': response_text[:500]  # Limit to first 500 chars
+        }), 500
 
 @app.route('/api/user/gemini_api_key', methods=['PUT'])
 @jwt_required()
