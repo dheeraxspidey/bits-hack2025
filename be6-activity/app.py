@@ -957,6 +957,99 @@ The response must contain only the JSON object - no additional text or explanati
         logger.error(f"Stack Trace: {traceback.format_exc()}")
         raise
 
+def generate_cover_letter_content(job_description, user_data, tone='professional', user_api_key=None):
+    """Generate cover letter using Gemini with job description context"""
+    try:
+        # API key handling same as resume generation
+        if user_api_key:
+            decrypted_key = decrypt_api_key(user_api_key)
+            genai.configure(api_key=decrypted_key)
+        else:
+            genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+
+        model = genai.GenerativeModel('gemini-1.5-pro')
+        
+        prompt = f"""Generate a professional cover letter based on this job description and applicant profile.
+        
+        Job Description:
+        {job_description}
+
+        Applicant Profile:
+        - Name: {user_data['name']}
+        - Education: {[edu.degree + ' in ' + edu.field for edu in user_data['education']]}
+        - Experience: {[exp.position + ' at ' + exp.company for exp in user_data['experience']]}
+        - Skills: {user_data['skills']}
+        -Projects: {[]}
+
+        Requirements:
+        1. Address key requirements from job description
+        2. Highlight 3 most relevant qualifications
+        3. Use {tone} tone
+        4. Keep under 500 words
+        5. Use proper business letter format
+        
+        """
+        print(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "top_k": 40,
+                "max_output_tokens": 1024,
+            }
+        )
+        return response.text
+
+    except Exception as e:
+        logger.error(f"Cover letter generation error: {str(e)}")
+        raise
+
+@app.route('/api/cover_letter/generate', methods=['POST'])
+@jwt_required()
+def generate_cover_letter():
+    try:
+        data = request.get_json(force=True)
+        required_fields = ['job_description', 'tone']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        user_id = get_jwt_identity()
+        user = User.objects(id=user_id).first()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Prepare user data (removed activities filtering)
+        user_data = {
+            'name': user.name,
+            'education': user.education,
+            'experience': user.experience,
+            'skills': user.skills,
+            'activities':user.activities
+        }
+
+        # Generate cover letter
+        cover_letter = generate_cover_letter_content(
+            job_description=data['job_description'],
+            user_data=user_data,
+            tone=data['tone'],
+            user_api_key=user.gemini_api_key
+        )
+        
+
+        return jsonify({
+            'cover_letter': cover_letter,
+            'generated_at': datetime.now().isoformat()
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Cover letter error: {str(e)}")
+        error_msg = 'Cover letter generation failed'
+        if "API_KEY_INVALID" in str(e):
+            error_msg += ' - Invalid API key'
+        return jsonify({'error': error_msg}), 500
+
 @app.route('/api/resume/generate', methods=['POST'])
 @jwt_required()
 def generate_resume():
@@ -1017,13 +1110,6 @@ def generate_resume():
                 'description': exp.description
             } for exp in user.experience],
             'skills': user.skills,
-            'activities': [{
-                'title': act.title,
-                'activity_type': act.activity_type,
-                'description': act.description,
-                'date': act.date.isoformat() if act.date else None,
-                'skills': act.skills
-            } for act in user.activities if act.title in data.get('selected_activities', [])]
         }
 
         # Pass user's API key if available

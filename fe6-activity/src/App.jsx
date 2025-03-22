@@ -4,6 +4,7 @@ import { CssBaseline, ThemeProvider, Box } from '@mui/material';
 import theme from './theme.js';
 import { useState, useEffect } from 'react';
 import Layout from './components/Layout';
+import CoverLetterGenerator from './pages/CoverLetterGenerator';
 
 console.log('App component rendering');
 
@@ -75,6 +76,16 @@ function App() {
           <Route
             path="/resume-builder"
             element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>}
+          />
+          <Route
+            path="/cover-letter"
+            element={
+              <ProtectedRoute>
+                <CoverLetterGenerator 
+                  user={JSON.parse(localStorage.getItem('user'))} 
+                />
+              </ProtectedRoute>
+            }
           />
          
          

@@ -23,6 +23,7 @@ import {
   Menu as MenuIcon, 
   Dashboard as DashboardIcon, 
   Description as ResumeIcon, 
+  Description as DescriptionIcon,
   Link as IntegrationsIcon, 
   AccountCircle, 
   ExitToApp as LogoutIcon,
@@ -78,7 +79,7 @@ const Navbar = ({ logout }) => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Resume', icon: <ResumeIcon />, path: '/resume-builder' },
-   
+    { text: 'Cover Letter', icon: <DescriptionIcon />, path: '/cover-letter' }
   ];
   
   const drawer = (
