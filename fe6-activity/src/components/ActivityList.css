@@ -1,0 +1,157 @@
+.activity-list {
+  margin-top: 2rem;
+  padding: 0 1rem;
+}
+
+.activity-card {
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+  border: 1px solid rgba(224, 224, 224, 0.4);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 10px -1px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  position: relative;
+  overflow: hidden;
+  animation: cardEntrance 0.6s ease forwards;
+  opacity: 0;
+}
+
+.activity-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.12),
+              0 6px 8px -4px rgba(0, 0, 0, 0.06);
+}
+
+.activity-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, 
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.4) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(238, 238, 238, 0.6);
+  position: relative;
+}
+
+.activity-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #2d3436;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  position: relative;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Status badge colors with subtle gradients */
+.status-badge.completed {
+  background: linear-gradient(135deg, #e8f5e9 0%, #d0efd1 100%);
+  color: #2e7d32;
+  border-color: #c8e6c9;
+}
+
+.status-badge.ongoing {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  color: #ef6c00;
+  border-color: #ffcc80;
+}
+
+.status-badge.planned {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+.activity-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.activity-content {
+  padding: 1rem 0;
+  position: relative;
+}
+
+.activity-description {
+  color: #5c5c5c;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.activity-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.activity-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(241, 243, 245, 0.6);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.activity-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 1rem;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 8px;
+  font-weight: 600;
+  color: #b8860b;
+  border: 1px solid rgba(184, 134, 11, 0.15);
+}
+
+/* Loading animation for cards */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.activity-card:nth-child(1) { animation-delay: 0.1s; }
+.activity-card:nth-child(2) { animation-delay: 0.2s; }
+.activity-card:nth-child(3) { animation-delay: 0.3s; } 
