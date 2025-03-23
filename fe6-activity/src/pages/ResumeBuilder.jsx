@@ -107,6 +107,7 @@ const ResumeBuilder = () => {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [resumeType, setResumeType] = useState('general');
   const [jobTitle, setJobTitle] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [activities, setActivities] = useState([]);
   const [sections, setSections] = useState(initialSections);
@@ -551,6 +552,7 @@ const ResumeBuilder = () => {
       template: selectedTemplate,
       type: resumeType,
       job_title: jobTitle,
+      job_description: jobDescription,
       selected_activities: selectedActivityTitles,
       sections: sections.map(section => ({
         id: section.id,
@@ -846,6 +848,7 @@ const ResumeBuilder = () => {
       template: selectedTemplate,
       resumeType: resumeType,
       jobTitle: jobTitle,
+      jobDescription: jobDescription,
       selectedActivities: selectedActivities.map(a => typeof a === 'object' ? a.id : a)
     };
     
@@ -860,6 +863,7 @@ const ResumeBuilder = () => {
       lastOptions.template !== currentOptions.template ||
       lastOptions.resumeType !== currentOptions.resumeType ||
       lastOptions.jobTitle !== currentOptions.jobTitle ||
+      lastOptions.jobDescription !== currentOptions.jobDescription ||
       JSON.stringify(lastOptions.selectedActivities) !== JSON.stringify(currentOptions.selectedActivities)
     );
   };
@@ -875,6 +879,7 @@ const ResumeBuilder = () => {
       case 1:
         stepStates.resumeType = resumeType;
         stepStates.jobTitle = jobTitle;
+        stepStates.jobDescription = jobDescription;
         break;
       case 2:
         stepStates.selectedActivities = selectedActivities.map(a => typeof a === 'object' ? a.id : a);
@@ -905,6 +910,9 @@ const ResumeBuilder = () => {
           }
           if (stepStates.jobTitle) {
             setJobTitle(stepStates.jobTitle);
+          }
+          if (stepStates.jobDescription) {
+            setJobDescription(stepStates.jobDescription);
           }
           break;
         case 2:
@@ -1247,6 +1255,8 @@ const ResumeBuilder = () => {
             setResumeType={setResumeType}
             jobTitle={jobTitle}
             setJobTitle={setJobTitle}
+            jobDescription={jobDescription}
+            setJobDescription={setJobDescription}
             predefinedJobTitles={predefinedJobTitles}
           />
         );

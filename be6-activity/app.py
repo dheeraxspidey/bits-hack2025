@@ -849,6 +849,7 @@ def generate_resume_content(resume_data):
                 "skills": act.get('skills', []),
                 "date": act.get('date', '')
             })
+        print(resume_data)
 
         # Enhanced prompt with explicit structure example
         prompt = f"""Create a professional resume in JSON format with these sections:
@@ -875,7 +876,7 @@ def generate_resume_content(resume_data):
             "skills": {resume_data.get('skills', [])},
             "projects": {activity_entries}
         }}
-
+        
         Requirements:
         1. Maintain this exact structure as shown in the input data  i repeat.
         2. Improve wording but keep all original data
@@ -884,6 +885,22 @@ def generate_resume_content(resume_data):
         5. For dates and periods:
    - Use consistent format: YYYY-MM for all dates
    - For ongoing items, use 'Present' consistently"""
+        if resume_data.get('job_description'):
+            prompt += f"""
+            
+            Job Requirements to Align With:
+            {resume_data['job_description']}
+            
+            Customization Instructions:
+            6. Highlight skills matching the job description
+            7. Emphasize relevant experience
+            8. Use keywords from the job requirements
+            9. Maintain original data integrity
+            10.for projects give a tleast 2 lines.
+            """
+        print(prompt)    
+        
+   
 
         # Generate content - fix indentation here
         response = requests.post(
@@ -920,9 +937,9 @@ def generate_resume_content(resume_data):
         clean_content = clean_content.strip()
             
         parsed_resume=clean_content
-        print("thisss is the thinggg")
-        # parsed_resume="'''"+parsed_resume+"'''"
-        print(parsed_resume)    
+        # print("thisss is the thinggg")
+        # # parsed_resume="'''"+parsed_resume+"'''"
+        # print(parsed_resume)    
         parsed_resume=json.loads(parsed_resume)
         parsed_resume=json.dumps(parsed_resume, indent=4)
         return parsed_resume
@@ -969,7 +986,11 @@ def generate_cover_letter_content(job_description, user_data, tone='professional
             },
             timeout=60
         )
-        return response.text
+        response_data = response.json()
+        
+        # Clean response text
+        content = response_data.get("response", "")
+        return content
 
     except Exception as e:
         logger.error(f"Cover letter generation error: {str(e)}")
@@ -1039,11 +1060,7 @@ def generate_resume():
             return jsonify({'error': 'User not found'}), 404
 
         # Check for any available API key (user or .env)
-        if not user.gemini_api_key and not os.getenv('GEMINI_API_KEY'):
-            return jsonify({
-                'error': 'No Gemini API key configured. Please set your API key first or contact support.',
-                'needs_api_key': True
-            }), 400
+        
 
         data = request.get_json()
         required_fields = ['template', 'type']

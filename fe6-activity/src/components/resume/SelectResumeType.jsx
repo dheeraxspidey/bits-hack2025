@@ -5,14 +5,17 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormHelperText
+  FormHelperText,
+  TextField
 } from '@mui/material';
 
 const SelectResumeType = ({ 
   resumeType, 
   setResumeType, 
   jobTitle, 
-  setJobTitle, 
+  setJobTitle,
+  jobDescription,
+  setJobDescription,
   predefinedJobTitles 
 }) => {
   return (
@@ -30,21 +33,34 @@ const SelectResumeType = ({
       </FormControl>
       
       {resumeType === 'specific' && (
-        <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel>Job Title</InputLabel>
-          <Select
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            label="Job Title"
-          >
-            {predefinedJobTitles.map((title) => (
-              <MenuItem key={title} value={title}>
-                {title}
-              </MenuItem>
-            ))}
-          </Select>
-          <FormHelperText>Select a job title for your targeted resume</FormHelperText>
-        </FormControl>
+        <>
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel>Job Title</InputLabel>
+            <Select
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              label="Job Title"
+            >
+              {predefinedJobTitles.map((title) => (
+                <MenuItem key={title} value={title}>
+                  {title}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>Select a job title for your targeted resume</FormHelperText>
+          </FormControl>
+
+          <TextField
+            fullWidth
+            label="Job Description"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+            multiline
+            minRows={3}
+            sx={{ mb: 3 }}
+            helperText="Paste the job description you're targeting (used for resume customization)"
+          />
+        </>
       )}
     </Box>
   );
