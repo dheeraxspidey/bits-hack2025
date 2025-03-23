@@ -1,3 +1,4 @@
+![Template Selection](./images/resumetemplates.png)
 # 🚀 AI-Powered Activity Logger & Resume Generator
 
 
