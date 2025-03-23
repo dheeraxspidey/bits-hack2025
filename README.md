@@ -39,7 +39,7 @@
 ## 🖼️ Visual Walkthrough
 
 ### DEMO OF RESUMEHUB
-![Demo of the software created](https://drive.google.com/file/d/16oO8_q7HNfDItWcCtmR0tGs93hSoYG7X/view?usp=sharing)
+![Demo of the software created](https://img.youtube.com/vi/pbwLXz0FAmQ/0.jpg)(https://www.youtube.com/watch?v=pbwLXz0FAmQ)
 
 ### 1. Activity Tracking Interface
 ![Activity Tracking](./images/activity.png)
