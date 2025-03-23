@@ -35,10 +35,11 @@
   - Privacy-focused data processing
   - Offline operation capability
 
+
 ## 🖼️ Visual Walkthrough
 
 ### DEMO OF RESUMEHUB
-![Demo of the software created](ResumeHub_Demo.mp4)
+![Demo of the software created](https://drive.google.com/file/d/16oO8_q7HNfDItWcCtmR0tGs93hSoYG7X/view?usp=sharing)
 
 ### 1. Activity Tracking Interface
 ![Activity Tracking](./images/activity.png)
