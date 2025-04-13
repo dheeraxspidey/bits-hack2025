@@ -138,3 +138,4 @@ MIT Licensed - See [LICENSE](LICENSE) for details.
 
 🏆 **Developed for BITS Hackathon 2025**  
 💡 Try our live demo: [demo.example.com](https://demo.example.com) | ⭐ Star us on GitHub!
+PS: Live demo coming soon...
